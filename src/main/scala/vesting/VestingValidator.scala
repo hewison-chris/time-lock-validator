@@ -56,7 +56,23 @@ object VestingValidator {
         redeemer: Data,
         tx: TxInfo,
         ownRef: TxOutRef
-    ): Unit = fail(NotImplemented)
+    ): Unit = {
+        val VestingDatum(owner, beneficiary, deadline) =
+            datum.getOrFail(InvalidDatum).to[VestingDatum]
+        redeemer.to[VestingAction] match
+            case VestingAction.Claim =>
+                require(
+                  tx.validFromOrFail(NoValidityLowerBound) >= deadline,
+                  TooEarlyToClaim
+                )
+                require(tx.isSignedBy(beneficiary), UnsignedBeneficiary)
+            case VestingAction.Cancel =>
+                require(
+                  tx.validToOrFail(NoValidityUpperBound) <= deadline,
+                  TooLateToCancel
+                )
+                require(tx.isSignedBy(owner), UnsignedOwner)
+    }
 
     // Error messages. Use these so the tests can check the reason.
     inline val NotImplemented = "VestingValidator.spend is not implemented"
