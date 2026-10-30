@@ -43,31 +43,85 @@ class VestingValidatorTest extends AnyFunSuite, ScalusTest {
     }
 
     // 3. Claim signed by the wrong key / by nobody: rejected, for the right reason.
-    test("Claim: signed by the wrong key is rejected")(pending)
+    test("Claim: signed by the wrong key is rejected")(
+      expectFailure(VestingValidator.UnsignedBeneficiary) {
+          spendContext(Claim, List(stranger), from(deadline))
+      }
+    )
 
-    test("Claim: signed by nobody is rejected")(pending)
+    test("Claim: signed by nobody is rejected")(
+      expectFailure(VestingValidator.UnsignedBeneficiary) {
+          spendContext(Claim, List.Nil, from(deadline))
+      }
+    )
 
     // 4. Cancel by the owner before the deadline: accepted. Include the exact boundary.
-    test("Cancel: owner, validity range ends before the deadline")(pending)
+    test("Cancel: owner, validity range ends before the deadline")({
+        val result = run(
+          spendContext(Cancel, List(owner), upTo(deadline - 1))
+        )
+        assert(result.isSuccess, result.logs.mkString("\n"))
+    })
 
-    test("Cancel: owner, validity range ends exactly at the deadline")(pending)
+    test("Cancel: owner, validity range ends exactly at the deadline")({
+        val result = run(
+          spendContext(Cancel, List(owner), upTo(deadline))
+        )
+        assert(result.isSuccess, result.logs.mkString("\n"))
+    })
 
     // 5. Cancel after the deadline: rejected, for the right reason.
-    test("Cancel: validity range ends after the deadline is rejected")(pending)
+    test("Cancel: validity range ends after the deadline is rejected")({
+        expectFailure(VestingValidator.TooLateToCancel) {
+            spendContext(Cancel, List(owner), upTo(deadline + 1))
+        }
+    })
 
     // 6. Cancel signed by the wrong key: rejected, for the right reason.
-    test("Cancel: signed by the wrong key is rejected")(pending)
+    test("Cancel: signed by the wrong key is rejected")({
+        expectFailure(VestingValidator.UnsignedOwner) {
+            spendContext(Cancel, List(stranger), upTo(deadline))
+        }
+    })
 
     // 7. A transaction with no validity range set (for both actions): rejected, for the right reason.
-    test("Claim: no validity range is rejected")(pending)
+    test("Claim: no validity range is rejected")({
+        expectFailure(VestingValidator.NoValidityLowerBound) {
+            spendContext(Claim, List(beneficiary), unbounded)
+        }
+    })
 
-    test("Cancel: no validity range is rejected")(pending)
+    test("Cancel: no validity range is rejected")({
+        expectFailure(VestingValidator.NoValidityUpperBound) {
+            spendContext(Cancel, List(owner), unbounded)
+        }
+    })
 
     // 8. A validity range that straddles the deadline: rejected for both actions.
-    test("Claim: validity range straddling the deadline is rejected")(pending)
+    test("Claim: validity range straddling the deadline is rejected")({
+        expectFailure(VestingValidator.TooEarlyToClaim) {
+            spendContext(
+              Claim,
+              List(beneficiary),
+              between(deadline - 1, deadline + 1)
+            )
+        }
+    })
 
-    test("Cancel: validity range straddling the deadline is rejected")(pending)
+    test("Cancel: validity range straddling the deadline is rejected")({
+        expectFailure(VestingValidator.TooLateToCancel) {
+            spendContext(
+              Cancel,
+              List(owner),
+              between(deadline - 1, deadline + 1)
+            )
+        }
+    })
 
     // 9. Missing datum: rejected.
-    test("Missing datum is rejected")(pending)
+    test("Missing datum is rejected")({
+        expectFailure(VestingValidator.InvalidDatum) {
+            spendContext(Claim, List(beneficiary), from(deadline), None)
+        }
+    })
 }

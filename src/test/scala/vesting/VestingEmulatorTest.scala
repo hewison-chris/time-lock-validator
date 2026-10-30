@@ -9,6 +9,9 @@ import scalus.testing.kit.{ScalusTest, TestUtil}
 import scalus.utils.await
 
 import java.time.Instant
+import vesting.VestingValidator.{TooEarlyToClaim, UnsignedBeneficiary}
+import vesting.VestingValidator.TooLateToCancel
+import vesting.VestingValidator.UnsignedOwner
 
 /** End-to-end tests: real transactions against the in-memory emulator.
   *
@@ -85,14 +88,92 @@ class VestingEmulatorTest extends AnyFunSuite, ScalusTest {
     }
 
     // 11. Owner locks, owner cancels before the deadline.
-    test("owner locks, owner cancels before the deadline")(pending)
+    test("owner locks, owner cancels before the deadline") {
+        val provider = newEmulator
+        val lockedUtxo = lock(provider)
+        provider.setSlot(beforeSlot)
+        val cancelTx = txs.cancel(
+          utxos = utxosOf(provider, Alice),
+          lockedUtxo = lockedUtxo,
+          owner = Alice.addrKeyHash,
+          payee = Alice.address,
+          validTo = deadline,
+          sponsor = Alice.address,
+          signer = Alice.signer
+        )
+        val result = provider.submit(cancelTx).await()
+        assert(result.isRight, s"Emulator rejected the cancel: $result")
+        assert(
+          provider.findUtxos(txs.scriptAddress).await().toOption.get.isEmpty
+        )
+    }
 
     // 12. The rejection cases. Assert the reason, not just that it failed.
-    test("claim too early is rejected")(pending)
+    test("claim too early is rejected") {
+        val provider = newEmulator
+        val lockedUtxo = lock(provider)
+        provider.setSlot(beforeSlot)
+        assertScriptFail(TooEarlyToClaim) {
+            txs.claim(
+              utxos = utxosOf(provider, Bob),
+              lockedUtxo = lockedUtxo,
+              beneficiary = Bob.addrKeyHash,
+              payee = Bob.address,
+              validFrom = beforeDeadline,
+              sponsor = Bob.address,
+              signer = Bob.signer
+            )
+        }
+    }
 
-    test("claim by a stranger is rejected")(pending)
+    test("claim by a stranger is rejected") {
+        val provider = newEmulator
+        val lockedUtxo = lock(provider)
+        provider.setSlot(afterSlot)
+        assertScriptFail(UnsignedBeneficiary) {
+            txs.claim(
+              utxos = utxosOf(provider, Eve),
+              lockedUtxo = lockedUtxo,
+              beneficiary = Eve.addrKeyHash,
+              payee = Eve.address,
+              validFrom = afterDeadline,
+              sponsor = Eve.address,
+              signer = Eve.signer
+            )
+        }
+    }
 
-    test("cancel too late is rejected")(pending)
+    test("cancel too late is rejected") {
+        val provider = newEmulator
+        val lockedUtxo = lock(provider)
+        provider.setSlot(afterSlot)
+        assertScriptFail(TooLateToCancel) {
+            txs.cancel(
+              utxos = utxosOf(provider, Alice),
+              lockedUtxo = lockedUtxo,
+              owner = Alice.addrKeyHash,
+              payee = Alice.address,
+              validTo = afterDeadline,
+              sponsor = Alice.address,
+              signer = Alice.signer
+            )
+        }
+    }
 
-    test("cancel by a stranger is rejected")(pending)
+    test("cancel by a stranger is rejected") {
+        val provider = newEmulator
+        val lockedUtxo = lock(provider)
+        provider.setSlot(beforeSlot)
+        assertScriptFail(UnsignedOwner) {
+            txs.cancel(
+              utxos = utxosOf(provider, Eve),
+              lockedUtxo = lockedUtxo,
+              owner = Eve.addrKeyHash,
+              payee = Eve.address,
+              validTo = deadline,
+              sponsor = Eve.address,
+              signer = Eve.signer
+            )
+        }
+    }
 }
