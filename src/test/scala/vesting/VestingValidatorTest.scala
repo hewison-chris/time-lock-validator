@@ -32,7 +32,7 @@ class VestingValidatorTest extends AnyFunSuite, ScalusTest {
     test("Claim: beneficiary, validity range starts at the deadline") {
         val result = run(spendContext(Claim, List(beneficiary), from(deadline)))
         assert(result.isSuccess, result.logs.mkString("\n"))
-        info(s"budget: ${result.budget}")
+        info(s"claimbudget: ${result.budget}")
     }
 
     // 2. Claim before the deadline: rejected, for the right reason.
@@ -61,6 +61,7 @@ class VestingValidatorTest extends AnyFunSuite, ScalusTest {
           spendContext(Cancel, List(owner), upTo(deadline - 1))
         )
         assert(result.isSuccess, result.logs.mkString("\n"))
+        info(s"cancel budget: ${result.budget}")
     })
 
     test("Cancel: owner, validity range ends exactly at the deadline")({
@@ -124,4 +125,12 @@ class VestingValidatorTest extends AnyFunSuite, ScalusTest {
             spendContext(Claim, List(beneficiary), from(deadline), None)
         }
     })
+
+    // Part C
+    test("script size in bytes") {
+        info(
+          s"script size: ${VestingContract.compiled.script.script.size} bytes"
+        )
+        assert(VestingContract.compiled.script.script.size > 0)
+    }
 }

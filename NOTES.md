@@ -4,11 +4,11 @@ Fill this in as you go. Short answers are fine; bullet points are fine.
 
 ## Time spent
 
-_How long you spent, and where you stopped if you hit the 2-hour limit._
+About 2 hours
 
 ## What does not pass, and why
 
-_Leave empty if `sbt test` is green._
+All pass
 
 ## Part C: size and cost
 
@@ -17,13 +17,13 @@ Budgets come from a successful run of the validator: `result.budget` in the unit
 tests (the worked claim test already prints it with `info`), or
 `tx.witnessSet.redeemers.get.value.totalExUnits` on a built transaction.
 
-| Metric                | Value |
-|-----------------------|-------|
-| Script size (bytes)   |       |
-| Claim: CPU steps      |       |
-| Claim: memory units   |       |
-| Cancel: CPU steps     |       |
-| Cancel: memory units  |       |
+| Metric                | Value   |
+|-----------------------|---------|
+| Script size (bytes)   |309      |
+| Claim: CPU steps      |9,451,699|
+| Claim: memory units   |25,518   |
+| Cancel: CPU steps     |9,565,362|
+| Cancel: memory units  |25,750   |
 
 ## Part D: short answers
 
