@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "scalus": {
+      "source": {
+        "source": "github",
+        "repo": "scalus3/scalus"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "scalus@scalus": true
+  }
+}
